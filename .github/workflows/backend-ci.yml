@@ -1,49 +1,67 @@
-name: Backend CI
+name: Deploy to AWS EC2
 
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - main  
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
         with:
-          node-version: '18.19.1' 
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Install dependencies
-        run: npm install
+      - name: Add EC2 Host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} | tee -a ~/.ssh/known_hosts
 
-      - name: Build application
-        run: npm run build
-        
       - name: Debug EC2 Variables
         run: |
-          if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then echo "SSH_PRIVATE_KEY is not set"; else echo "SSH_PRIVATE_KEY is set"; fi
           echo "EC2_HOST is: ${{ secrets.EC2_HOST }}"
           echo "EC2_USER is: ${{ secrets.EC2_USER }}"
-          echo "Checking if variables are empty..."
+          if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then echo "SSH_PRIVATE_KEY is not set"; else echo "SSH_PRIVATE_KEY is set"; fi
           if [ -z "${{ secrets.EC2_HOST }}" ]; then echo "EC2_HOST is not set"; fi
           if [ -z "${{ secrets.EC2_USER }}" ]; then echo "EC2_USER is not set"; fi
 
-      - name: Deploy to EC2 (Dev)
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
+      - name: Deploy to EC2
         run: |
-          echo "$SSH_PRIVATE_KEY" > private_key.pem
-          chmod 600 private_key.pem
-          echo "Attempting to connect to $EC2_HOST"
-          scp -o StrictHostKeyChecking=no -i private_key.pem -r ./* $EC2_USER@$EC2_HOST:/path/to/your/dev-backend
-          ssh -o StrictHostKeyChecking=no -i private_key.pem $EC2_USER@$EC2_HOST "cd /path/to/your/dev-backend && npm install && npm run start"
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          set -x  # Enable debugging
+
+          # Kill any process running on port 4000 to avoid conflicts
+          sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
+
+          # Navigate to the application directory
+          cd ~/projects/random/Backend_Part_Nestjs
+
+          # Pull the latest changes from the main branch
+          git pull origin main
+
+          # Install dependencies (npm)
+          npm install
+
+          # Install PM2 if not installed
+          if ! command -v pm2 &> /dev/null; then
+            sudo npm install -g pm2
+          fi
+
+          # Set the Firebase API key from GitHub Secrets
+          export FIREBASE_API_KEY="${{ secrets.FIREBASE_API_KEY }}"
+
+          # Start the NestJS application with PM2 on port 4000
+          pm2 start npm --name "nestjs-app" -- run start  
+          EOF
+
+      - name: Reload Nginx
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          sudo systemctl reload nginx
+          EOF
