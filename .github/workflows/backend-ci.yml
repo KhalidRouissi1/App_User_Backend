@@ -18,16 +18,16 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Add EC2 Host to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H 13.60.163.228 >> ~/.ssh/known_hosts
-          cat ~/.ssh/known_hosts
-
       - name: Deploy to EC2
         run: |
           ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
           set -x  # Enable debugging
+
+          # Create the .ssh directory if it does not exist
+          mkdir -p ~/.ssh
+
+          # Add the EC2 Host to known_hosts
+          ssh-keyscan -H 13.60.163.228 >> ~/.ssh/known_hosts
 
           # Kill any process running on port 4000 to avoid conflicts
           sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
@@ -42,7 +42,7 @@ jobs:
           npm cache clean --force
 
           # Install dependencies (npm)
-          npm install --verbose
+          npm install 
 
           # Start the NestJS application in development mode
           npm run start -- --port 4000
