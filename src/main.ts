@@ -31,6 +31,6 @@ firebaseAdmin.initializeApp({
 });
 }
 
-  await app.listen(process.env.PORT);
+  await app.listen(4000);
 }
 bootstrap();
