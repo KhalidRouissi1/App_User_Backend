@@ -18,10 +18,12 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
+      - name: List SSH Keys
+        run: ssh-add -l
+
       - name: Deploy to EC2
         run: |
           timeout 120s ssh -v -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
-          set -x  # Enable debugging
           mkdir -p ~/.ssh
           ssh-keyscan -H 13.60.163.228 >> ~/.ssh/known_hosts
           sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
