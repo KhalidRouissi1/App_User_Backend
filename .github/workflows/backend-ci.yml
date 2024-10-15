@@ -22,7 +22,6 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H 13.60.163.228 >> ~/.ssh/known_hosts
-          # Print known_hosts for debugging
           cat ~/.ssh/known_hosts
 
       - name: Deploy to EC2
@@ -38,6 +37,9 @@ jobs:
 
           # Pull the latest changes from the main branch
           git pull origin main
+
+          # Clean npm cache before installing
+          npm cache clean --force
 
           # Install dependencies (npm)
           npm install --verbose
