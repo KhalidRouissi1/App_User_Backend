@@ -21,26 +21,18 @@ jobs:
       - name: Add EC2 Host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} | tee -a ~/.ssh/known_hosts
-
-      - name: Debug EC2 Variables
-        run: |
-          echo "EC2_HOST is: ${{ secrets.EC2_HOST }}"
-          echo "EC2_USER is: ${{ secrets.EC2_USER }}"
-          if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then echo "SSH_PRIVATE_KEY is not set"; else echo "SSH_PRIVATE_KEY is set"; fi
-          if [ -z "${{ secrets.EC2_HOST }}" ]; then echo "EC2_HOST is not set"; fi
-          if [ -z "${{ secrets.EC2_USER }}" ]; then echo "EC2_USER is not set"; fi
+          ssh-keyscan -H 13.60.163.228 | tee -a ~/.ssh/known_hosts
 
       - name: Deploy to EC2
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh ubuntu@13.60.163.228 << 'EOF'
           set -x  # Enable debugging
 
           # Kill any process running on port 4000 to avoid conflicts
           sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
 
           # Navigate to the application directory
-          cd /path/to/your/dev-backend  # Update this path accordingly
+          cd ~/projects/random/Backend_Part_Nestjs
 
           # Pull the latest changes from the main branch
           git pull origin main
@@ -53,15 +45,15 @@ jobs:
             sudo npm install -g pm2
           fi
 
-          # Set the Firebase API key from GitHub Secrets
-          export FIREBASE_API_KEY="${{ secrets.FIREBASE_API_KEY }}"
-
           # Start the NestJS application with PM2 on port 4000
-          pm2 start npm --name "nestjs-app" -- run start  # Update the command as per your start script
+          pm2 start dist/main.js --name "nestjs-app" -- --port 4000
+
+          # Optionally, tail your app logs if you have set up logging
+          # tail -f /var/www/dev-app/back/nestjs-backend/logs/*.log || echo "No log files found"
           EOF
 
       - name: Reload Nginx
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh ubuntu@13.60.163.228 << 'EOF'
           sudo systemctl reload nginx
           EOF
