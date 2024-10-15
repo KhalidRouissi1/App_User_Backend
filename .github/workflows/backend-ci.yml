@@ -33,7 +33,7 @@ jobs:
           sudo lsof -t -i:4001 | xargs kill -9 || echo "No process using port 4001"
 
           # Navigate to the NestJS application directory
-          cd /projects/random/Backend_Part_Nestjs
+          cd ~/projects/random/Backend_Part_Nestjs
 
           # Pull the latest changes from the main branch
           git pull origin main
