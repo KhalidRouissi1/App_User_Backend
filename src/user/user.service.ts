@@ -21,7 +21,7 @@ export class UserService {
       return userRecord;
     } catch (error) {
       console.error('Error creating user:', error);
-      throw new Error('User registration failed'); // Handle errors gracefully
+      throw new Error('User registration failed'); 
     }
   }
 
