@@ -25,35 +25,27 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh ubuntu@13.60.163.228 << 'EOF'
+          ssh -o ConnectTimeout=60 -T ubuntu@13.60.163.228 << 'EOF'
           set -x  # Enable debugging
 
           # Kill any process running on port 4000 to avoid conflicts
           sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
 
           # Navigate to the application directory
-          cd ~/projects/random/Backend_Part_Nestjs
+          cd /home/ubuntu/projects/random/Backend_Part_Nestjs
 
           # Pull the latest changes from the main branch
           git pull origin main
 
-          # Install dependencies (npm)
-          npm install
+          # Install dependencies (npm) with verbose logging
+          npm install --verbose
 
-          # Install PM2 if not installed
-          if ! command -v pm2 &> /dev/null; then
-            sudo npm install -g pm2
-          fi
-
-          # Start the NestJS application with PM2 on port 4000
-          pm2 start dist/main.js --name "nestjs-app" -- --port 4000
-
-          # Optionally, tail your app logs if you have set up logging
-          # tail -f /var/www/dev-app/back/nestjs-backend/logs/*.log || echo "No log files found"
+          # Start the NestJS application in development mode with PM2 on port 4000
+          pm2 start npm --name "nestjs-app" -- run start -- --port 4000
           EOF
 
       - name: Reload Nginx
         run: |
-          ssh ubuntu@13.60.163.228 << 'EOF'
+          ssh -o ConnectTimeout=60 -T ubuntu@13.60.163.228 << 'EOF'
           sudo systemctl reload nginx
           EOF
