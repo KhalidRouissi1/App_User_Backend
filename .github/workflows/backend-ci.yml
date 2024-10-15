@@ -18,28 +18,28 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: List SSH Keys
-        run: ssh-add -l
-
-      - name: Test SSH Connection
-        run: |
-          ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no ubuntu@13.60.163.228 'echo "SSH Connection Successful!"'
-
       - name: Deploy to EC2
         run: |
-          timeout 300s ssh -v -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
+          ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
+          # Ensure .ssh directory exists
           mkdir -p ~/.ssh
+          # Add host to known hosts
           ssh-keyscan -H 13.60.163.228 >> ~/.ssh/known_hosts
+          # Kill any process using port 4000
           sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
+          # Navigate to the project directory
           cd /home/ubuntu/projects/random/Backend_Part_Nestjs
+          # Pull the latest code
           git pull origin main
+          # Clean the npm cache and install dependencies
           npm cache clean --force
           npm install --verbose
-          npm run start -- --port 4000
+          # Start the NestJS application
+          npm run start -- --port 4000 &
           EOF
 
       - name: Reload Nginx
         run: |
-          timeout 60s ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
+          ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
           sudo systemctl reload nginx
           EOF
