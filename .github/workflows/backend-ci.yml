@@ -18,24 +18,39 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
+      - name: Add EC2 Host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 13.60.163.228 | tee -a ~/.ssh/known_hosts
+
       - name: Deploy to EC2
         run: |
           ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
-          # Ensure .ssh directory exists
-          mkdir -p ~/.ssh
-          # Add host to known hosts
-          ssh-keyscan -H 13.60.163.228 >> ~/.ssh/known_hosts
-          # Kill any process using port 4000
+          set -x  # Enable debugging
+
+          # Kill any process running on ports 4000 and 4001 to avoid conflicts
           sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
-          # Navigate to the project directory
-          cd /home/ubuntu/projects/random/Backend_Part_Nestjs
-          # Pull the latest code
+          sudo lsof -t -i:4001 | xargs kill -9 || echo "No process using port 4001"
+
+          # Navigate to the NestJS application directory
+          cd /projects/random/Backend_Part_Nestjs
+
+          # Pull the latest changes from the main branch
           git pull origin main
-          # Clean the npm cache and install dependencies
-          npm cache clean --force
-          npm install --verbose
-          # Start the NestJS application
-          npm run start -- --port 4000 &
+
+          # Install dependencies (npm)
+          npm install
+
+          # Install PM2 if not installed
+          if ! command -v pm2 &> /dev/null; then
+            sudo npm install -g pm2
+          fi
+
+          # Start the NestJS application with PM2 on port 4000
+          pm2 start npm --name "nestjs-app" -- run start
+
+          # Optionally, tail your app logs if you have set up logging
+          # tail -f /path/to/your/logs/*.log || echo "No log files found"
           EOF
 
       - name: Reload Nginx
