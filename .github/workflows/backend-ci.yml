@@ -21,9 +21,13 @@ jobs:
       - name: List SSH Keys
         run: ssh-add -l
 
+      - name: Test SSH Connection
+        run: |
+          ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no ubuntu@13.60.163.228 'echo "SSH Connection Successful!"'
+
       - name: Deploy to EC2
         run: |
-          timeout 120s ssh -v -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
+          timeout 300s ssh -v -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
           mkdir -p ~/.ssh
           ssh-keyscan -H 13.60.163.228 >> ~/.ssh/known_hosts
           sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
@@ -36,6 +40,6 @@ jobs:
 
       - name: Reload Nginx
         run: |
-          ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
+          timeout 60s ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
           sudo systemctl reload nginx
           EOF
