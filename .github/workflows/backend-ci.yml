@@ -26,4 +26,5 @@ jobs:
 
     - name: SSH into server and deploy
       run: |
-        ssh -i "${{ secrets.EC2_SSH_KEY }}" ubuntu@13.60.80.252 'cd /path-to-your-app && docker-compose pull && docker-compose up -d'
+        ssh -i "${{ secrets.EC2_SSH_KEY }}" ubuntu@13.60.80.252 'cd ~/myapp && docker-compose pull && docker-compose up -d'
+
