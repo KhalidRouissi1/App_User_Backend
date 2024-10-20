@@ -1,0 +1,89 @@
+<<<<<<< HEAD
+name: Deploy to AWS EC2
+=======
+name: Deploy Backend
+>>>>>>> 4702c62 (Edit the CI CD File)
+
+on:
+  push:
+    branches:
+<<<<<<< HEAD
+      - main  
+=======
+      - main
+>>>>>>> 4702c62 (Edit the CI CD File)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+<<<<<<< HEAD
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Add EC2 Host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 13.60.163.228 | tee -a ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        run: |
+          ssh ubuntu@13.60.163.228 << 'EOF'
+          set -x  # Enable debugging
+
+          # Kill any process running on ports 4000 and 4001 to avoid conflicts
+          sudo lsof -t -i:4000 | xargs kill -9 || echo "No process using port 4000"
+          sudo lsof -t -i:4001 | xargs kill -9 || echo "No process using port 4001"
+
+          # Navigate to the NestJS application directory
+          cd ~/projects/random/Backend_Part_Nestjs
+
+          # Pull the latest changes from the main branch
+          git pull origin main
+
+          # Install dependencies (npm)
+          npm install
+
+          # Install PM2 if not installed
+          if ! command -v pm2 &> /dev/null; then
+            sudo npm install -g pm2
+          fi
+
+          # Start the NestJS application with PM2 on port 4000
+          pm2 start npm --name "nestjs-app" -- start
+
+          # Optionally, tail your app logs if you have set up logging
+          # tail -f /path/to/your/logs/*.log || echo "No log files found"
+          EOF
+
+      - name: Reload Nginx
+        run: |
+          ssh -o ConnectTimeout=60 -o StrictHostKeyChecking=no -T ubuntu@13.60.163.228 << 'EOF'
+          sudo systemctl reload nginx
+          EOF
+=======
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to DockerHub
+      run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+    - name: Build and push Docker image
+      run: |
+        docker build -t your-dockerhub-username/backend:latest .
+        docker push your-dockerhub-username/backend:latest
+
+    - name: SSH into server and deploy
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+        chmod 600 key.pem
+        ssh -i key.pem ec2-user@your-ec2-ip-address 'cd /path-to-your-app && docker-compose pull && docker-compose up -d'
+>>>>>>> 4702c62 (Edit the CI CD File)
