@@ -1,4 +1,4 @@
-name: Deploy Backend
+name: Deploy Application
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy-frontend:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v2
 
       - name: Set up Docker Buildx
@@ -19,13 +19,33 @@ jobs:
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Build and push Docker image
+      - name: Build and Push Frontend Docker Image
         run: |
-          docker build -t your-dockerhub-username/backend:latest .
+          docker build -t your-dockerhub-username/frontend:latest ./path-to-frontend
+          docker push your-dockerhub-username/frontend:latest
+
+      - name: SSH into server and deploy frontend
+        run: |
+          ssh -i "${{ secrets.EC2_SSH_KEY }}" ec2-user@your-ec2-ip-address 'cd /path-to-your-frontend-app && docker-compose pull frontend && docker-compose up -d frontend'
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build and Push Backend Docker Image
+        run: |
+          docker build -t your-dockerhub-username/backend:latest ./path-to-backend
           docker push your-dockerhub-username/backend:latest
 
-      - name: SSH into server and deploy
+      - name: SSH into server and deploy backend
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
-          chmod 600 key.pem
-          ssh -i key.pem ec2-user@your-ec2-ip-address 'cd /path-to-your-app && docker-compose pull && docker-compose up -d'
+          ssh -i "${{ secrets.EC2_SSH_KEY }}" ec2-user@your-ec2-ip-address 'cd /path-to-your-backend-app && docker-compose pull backend && docker-compose up -d backend'
