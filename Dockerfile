@@ -2,9 +2,11 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package.json and package-lock.json if available
+# Copy package.json first
 COPY package.json ./
-COPY package-lock.json ./  # Only include if the file exists
+
+# Check if package-lock.json exists and copy if it does
+RUN [ -f package-lock.json ] && cp package-lock.json ./ || echo "package-lock.json not found"
 
 # Install dependencies
 RUN npm install
