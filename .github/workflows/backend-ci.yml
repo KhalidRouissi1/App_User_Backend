@@ -1,9 +1,9 @@
-name: Deploy NestJS Frontend to AWS EC2
+name: Deploy Backend
 
 on:
   push:
     branches:
-      - main  
+      - main
 
 jobs:
   deploy:
@@ -16,41 +16,42 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Log in to DockerHub
+      - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         run: |
-          docker build -t khalidelmodir/frontend:latest .  # Change to your front-end Docker image name
-          docker push khalidelmodir/frontend:latest
+          docker build -t khalidelmodir/backend:latest .
+
+      - name: Push Docker image to Docker Hub
+        run: |
+          docker push khalidelmodir/backend:latest
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}  # Ensure this secret is correctly set in GitHub
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       - name: Add EC2 Host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H 13.60.80.252 | tee -a ~/.ssh/known_hosts  # Replace with your EC2 IP
+          ssh-keyscan -H 13.60.80.252 | tee -a ~/.ssh/known_hosts
 
       - name: Deploy to EC2
         run: |
-          ssh ubuntu@13.60.80.252 << 'EOF'  # Replace with your EC2 IP
+          ssh ubuntu@13.60.80.252 << 'EOF'
           set -x  # Enable debugging
 
-          # Stop and remove any running containers to avoid conflicts
-          docker-compose down || echo "No containers were running"
+          # Stop any existing containers to avoid conflicts
+          sudo docker stop backend-app || echo "No running container named backend-app"
+          sudo docker rm backend-app || echo "No container named backend-app to remove"
 
-          # Pull the latest image
-          docker-compose pull
+          # Pull the latest Docker image
+          sudo docker pull khalidelmodir/backend:latest
 
-          # Start the application
-          docker-compose up -d
-          EOF
+          # Run the new container
+          sudo docker run -d --name backend-app -p 4000:4000 khalidelmodir/backend:latest
 
-      - name: Reload Nginx (if applicable)
-        run: |
-          ssh ubuntu@13.60.80.252 << 'EOF'  # Replace with your EC2 IP
-          sudo systemctl reload nginx
+          # Optionally, tail your app logs if you have set up logging
+          # sudo docker logs -f backend-app || echo "No log files found"
           EOF
