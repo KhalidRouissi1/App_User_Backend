@@ -1,30 +1,56 @@
-name: Deploy Backend
+name: Deploy NestJS Frontend to AWS EC2
 
 on:
   push:
     branches:
-      - main
-  #
+      - main  
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-    - name: Log in to DockerHub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-    - name: Build and push Docker image
-      run: |
-        docker build -t khalidelmodir/backend:latest .
-        docker push khalidelmodir/backend:latest
+      - name: Build and push Docker image
+        run: |
+          docker build -t khalidelmodir/frontend:latest .  # Change to your front-end Docker image name
+          docker push khalidelmodir/frontend:latest
 
-    - name: SSH into server and deploy
-      run: |
-        ssh -i "${{ secrets.EC2_SSH_KEY }}" ubuntu@13.60.80.252 'cd ~/myapp && docker-compose pull && docker-compose up -d'
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}  # Ensure this secret is correctly set in GitHub
 
+      - name: Add EC2 Host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 13.60.80.252 | tee -a ~/.ssh/known_hosts  # Replace with your EC2 IP
+
+      - name: Deploy to EC2
+        run: |
+          ssh ubuntu@13.60.80.252 << 'EOF'  # Replace with your EC2 IP
+          set -x  # Enable debugging
+
+          # Stop and remove any running containers to avoid conflicts
+          docker-compose down || echo "No containers were running"
+
+          # Pull the latest image
+          docker-compose pull
+
+          # Start the application
+          docker-compose up -d
+          EOF
+
+      - name: Reload Nginx (if applicable)
+        run: |
+          ssh ubuntu@13.60.80.252 << 'EOF'  # Replace with your EC2 IP
+          sudo systemctl reload nginx
+          EOF
