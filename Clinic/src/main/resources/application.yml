@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: cours
+  datasource:
+    url: jdbc:postgresql://localhost:5432/soa
+    username: khaled
+    password: khaled
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+server:
+  port: 8088
+
